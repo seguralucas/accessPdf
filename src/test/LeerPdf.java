@@ -84,60 +84,56 @@ public class LeerPdf {
             ruta=("H:/Users/GAS/Desktop/pdf/"+ficheros[x]); //SE ALMACENA LA RUTA DEL ARCHIVO A LEER. 
             
               try {
-            	  ArrayList<Remito> remitos= new ArrayList<Remito>();
             	  PDDocument pd = PDDocument.load(ruta); //CARGAR EL PDF
                   List l = pd.getDocumentCatalog().getAllPages();//NUMERO LAS PAGINAS DEL ARCHIVO
                   Object[] obj = l.toArray();//METO EN UN OBJETO LA LISTA DE PAGINAS PARA MANIPULARLA
-                  PDPage page = (PDPage) obj[0];//PAGE ES LA PAGINA 1 DE LA QUE CONSTA EL ARCHIVO
-                  PageFormat pageFormat = pd.getPageFormat(0);//PROPIEDADES DE LA PAGINA (FORMATO)
-                  Double d1 = new Double(pageFormat.getHeight());//ALTO
-                  Double d2 = new Double(pageFormat.getWidth());//ANCHO
-                  int width = d1.intValue();//ANCHO
-                  int eigth=1024;//ALTO
-                  PDFTextStripperByArea stripper = new PDFTextStripperByArea();//COMPONENTE PARA ACCESO AL TEXTO
+                                    
                   
-                  Rectangle agenteRectangle = new Rectangle(0, 80, 125,eigth-140);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
-                  Rectangle clienteRectangle = new Rectangle(125, 80, 100,eigth-140);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
-                  Rectangle localidadRectangle = new Rectangle(225, 80, 65,eigth-140);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
-                  Rectangle direccionRectangle = new Rectangle(290, 80, 120,eigth-140);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
-                  Rectangle nEnvioRectangle = new Rectangle(410, 80, 50,eigth-140);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
-                  Rectangle bultoRectangle = new Rectangle(460, 80, 60,eigth-140);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
-                  stripper.addRegion("areaAgente", agenteRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
-                  stripper.addRegion("areaCliente", clienteRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
-                  stripper.addRegion("areaLocalidad", localidadRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
-                  stripper.addRegion("areaDireccion", direccionRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
-                  stripper.addRegion("areaNEnvio", nEnvioRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
-                  stripper.addRegion("areaBulto", bultoRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
-                  stripper.extractRegions(page);//EXTRAE TEXTO DEL AREA
-                  
-                  String agentes=(stripper.getTextForRegion("areaAgente"));
-                  String clientes=(stripper.getTextForRegion("areaCliente"));
-                  String localidades=(stripper.getTextForRegion("areaLocalidad"));
-                  String direcciones=(stripper.getTextForRegion("areaDireccion"));
-                  String nEnvios=(stripper.getTextForRegion("areaNEnvio"));
-                  String bultos=(stripper.getTextForRegion("areaBulto"));
-                  String[] agentesArray=agentes.split("\n");
-                  String[] clientesArray=clientes.split("\n");
-                  String[] localidadesArray=localidades.split("\n");
-                  String[] direccionesArray=direcciones.split("\n");
-                  String[] nEnviosArray=nEnvios.split("\n");
-                  String[] bultosArray=bultos.split("\n");
-                  System.out.println(nEnviosArray.length);
-                  
-                  ArrayList<String> list= new ArrayList<String>();
-
+                  ArrayList<Remito> list= new ArrayList<Remito>();
+                  	for(int n=0;n<obj.length;n++){
+                  		PDPage page = (PDPage) obj[n];//PAGE ES LA PAGINA 1 DE LA QUE CONSTA EL ARCHIVO
+                        PageFormat pageFormat = pd.getPageFormat(0);//PROPIEDADES DE LA PAGINA (FORMATO)
+                        Double d1 = new Double(pageFormat.getHeight());//ALTO
+                        Double d2 = new Double(pageFormat.getWidth());//ANCHO
+                        int width = d1.intValue();//ANCHO
+                        int eigth=1024;//ALTO
+                        PDFTextStripperByArea stripper = new PDFTextStripperByArea();//COMPONENTE PARA ACCESO AL TEXTO
                     	  for(int i=100;i<eigth-140;i+=10){
-			                  Rectangle nEnvioRectangle2 = new Rectangle(410, i, 50,9);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
-			                  PDFTextStripperByArea stripper2 = new PDFTextStripperByArea();//COMPONENTE PARA ACCESO AL TEXTO
-			                  stripper2.addRegion("areaNEnvio2", nEnvioRectangle2);//REGISTRAMOS LA REGION CON UN NOMBRE
-			                  stripper2.extractRegions(page);//EXTRAE TEXTO DEL AREA
-			                  String text=stripper2.getTextForRegion("areaNEnvio2");
-			                  if(text.length()>0){
-			                	  list.add(text);
-	                  		}
+                        	  Remito r= new Remito();
+                              Rectangle agenteRectangle = new Rectangle(0, i, 125,10);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
+                              Rectangle clienteRectangle = new Rectangle(125, i, 100,10);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
+                              Rectangle localidadRectangle = new Rectangle(225, i, 65,10);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
+                              Rectangle direccionRectangle = new Rectangle(290, i, 120,10);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
+                              Rectangle nEnvioRectangle = new Rectangle(410, i, 50,10);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
+                              Rectangle bultoRectangle = new Rectangle(460, i, 60,10);//DEFNIR AREA DONDE SE BUSCARA EL TEXTO
+                              stripper.addRegion("areaAgente", agenteRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
+                              stripper.addRegion("areaCliente", clienteRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
+                              stripper.addRegion("areaLocalidad", localidadRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
+                              stripper.addRegion("areaDireccion", direccionRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
+                              stripper.addRegion("areaNEnvio", nEnvioRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
+                              stripper.addRegion("areaBulto", bultoRectangle);//REGISTRAMOS LA REGION CON UN NOMBRE
+                              stripper.extractRegions(page);//EXTRAE TEXTO DEL AREA
+                              
+                              String agentes=(stripper.getTextForRegion("areaAgente"));
+                              String clientes=(stripper.getTextForRegion("areaCliente"));
+                              String localidades=(stripper.getTextForRegion("areaLocalidad"));
+                              String direcciones=(stripper.getTextForRegion("areaDireccion"));
+                              String nEnvios=(stripper.getTextForRegion("areaNEnvio"));
+                              String bultos=(stripper.getTextForRegion("areaBulto"));
+                              if(nEnvios.length()>0 && !nEnvios.equalsIgnoreCase("TOTAL: ") ){
+	                        	  r.setAgente(agentes);
+	                        	  r.setCliente(clientes);
+	                        	  r.setLocalidad(localidades);
+	                        	  r.setDireccion(direcciones);
+	                        	  r.setnEnvio(nEnvios);
+	                        	  r.setBulto(bultos);
+	                        	  list.add(r);
+                              }
                     	  }
-		                  System.out.println(list.size());
-
+                  	}
+                  		for(Remito r:list)
+                    		  System.out.println(r);
+                  		System.out.println("Total de registros:" +list.size());
 
                   /*for(int i=1;i<agentesArray.length;i++){ //El primero lo ignoramos porque es el titulo
                 	  Remito r= new Remito();
