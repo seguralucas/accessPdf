@@ -17,5 +17,10 @@
 			<attribute name="owner.project.facets" value="java"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="D:/Snap/accessPdf/lib/commons-lang-2.6.jar"/>
+	<classpathentry kind="lib" path="D:/Snap/accessPdf/lib/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="D:/Snap/accessPdf/lib/hsqldb.jar"/>
+	<classpathentry kind="lib" path="D:/Snap/accessPdf/lib/jackcess-2.0.8.jar"/>
+	<classpathentry kind="lib" path="D:/Snap/accessPdf/lib/ucanaccess-2.0.9.4.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
