@@ -11,11 +11,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Properties;
 
@@ -24,78 +29,167 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.util.PDFImageWriter;
 import org.apache.pdfbox.util.PDFTextStripperByArea;
 public class LeerPdf {
-    public static void main(String[] args) {
+	public static int aciertos=0;
+	public static int fallos=0;
+	public static final int NO_EXISTE_EN_BD=-1;
+    public static void main(String[] args) throws IOException {
         LeerPdf leerPDF =new LeerPdf();
-        //leerPDF.lecturaPDF();
-    //	leerPDF.leerBD();
         Properties props=null;
-            try {
-                 props = leerPDF.loadProperties();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-            //leerPDF.leerBD();
-            leerPDF.lecturaPDF();
-          //  System.out.println(props.getProperty("path"));
-          //  System.out.println(props.getProperty("pathDB"));
+            try{
+        	ArrayList<Remito> remitos= leerPDF.lecturaPDF();
+   			System.out.println("Total de registros:" +remitos.size());
+   			LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "Total de registros:" +remitos.size());
+   			for(Remito remito: remitos){
+   				leerPDF.insertarRemito(remito);
+   			}
+   			System.out.println("Aciertos "+aciertos+" Fallos "+fallos);
+   			LogFile.cerrarYGuardarLogs();
+            }
+            catch(Exception e){
+       			LogFile.cerrarYGuardarLogs();
+            }
     }
     
-    private Properties loadProperties() throws IOException{
-        Properties props = new Properties();
-		props.load(new FileReader("configuracion.properties"));
-		return props;
-    }
-    
-    public void leerBD(){
+    private static Connection conn;
+    public void insertarRemito(Remito remito) throws IOException{
         try { 
      	   Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
-         Connection conn=DriverManager.getConnection("jdbc:ucanaccess://H:/Users/GAS/Desktop/TR_Logistica&Distribución_v1.6_Beatriz.mdb");         
- 	    System.out.println("OK");
- 	    Statement st = conn.createStatement(); 
-	//       String insert = "insert into Clientes(Cliente_Id,Cliente_Nombre,Cliente_Localidad_Id) values(9999,'asdasd',156)"; 
-	//       st.executeUpdate(insert);
- 	       String sql = "Select * from Clientes"; 
- 	       ResultSet rs = st.executeQuery(sql);
- 	       int i=0;
- 	       File borrar= new File("H:/Users/GAS/Desktop/borrar.txt");
- 	       FileWriter fw = new FileWriter(borrar);
-        while(rs.next()){
-     	   i++;
-     	   System.out.println(i);
-     	   fw.write("\n"+rs.getString(1)+"\t"+rs.getString(2)+"\t"+rs.getString(3)+"\t"+rs.getString(4));
-     	   }
-        fw.close();
+        conn=DriverManager.getConnection("jdbc:ucanaccess://"+Propiedades.getInstance().getPath_bd_access());         
+ 	    String nombreCliente;
+ 	    if(remito.getAgente().length()>=1)
+ 	    	nombreCliente=remito.getAgente();
+ 	    else if(remito.getCliente().length()>=1)
+ 	    	nombreCliente=remito.getAgente();
+ 	    else{
+ 	    	escribirErrorRemito(remito,"No se encuentra nombre de angente ni nombre de cliente");
+ 	    	return;
+ 	    } 	
+ 	    	remito.setLocalidadId(this.getIdLocalidadBD(remito.getLocalidad()));
+ 	    	remito.setClienteId(getCliente(nombreCliente,remito));
+ 	    	remito.setOrdenId(createOrden(remito));
+ 	    	createRemito(remito);
+ 	    
         }
         catch (Exception e) {
+        	escribirErrorRemito(remito, "Error al insertar en el access: "+e.getMessage());
      	   e.printStackTrace();
         }
     }
     
-    public void lecturaPDF(){
-        String ln = System.getProperty("line.separator"); 
-        File dir = new File("H:/Users/GAS/Desktop/pdf");//CREO UN OBJETO CON TODOS LOS ARCHIVOS QUE CONTIENE LA CARPETA QUE CONTIENE LOS PDFS.
+    private long getIdLocalidadBD(String localidad) throws SQLException{
+    	String sql = "Select * from Localidad where Localidad_Nombre='"+localidad+"'"; 
+ 	    Statement st = conn.createStatement(); 
+	       ResultSet rs = st.executeQuery(sql);
+	       int id=NO_EXISTE_EN_BD;
+	       while(rs.next()){
+	    	   id=rs.getInt("Localidad_Id");
+	       }
+	   return id==NO_EXISTE_EN_BD?createLocalidadBD(localidad):id;
+    }
+    
+
+    
+    private long getCliente(String nombreCliente, Remito remito) throws SQLException{
+    	String sql = "Select * from Clientes where Cliente_Nombre='"+nombreCliente+"' and Cliente_Direccion='"+remito.getDireccion()+"' and Cliente_Localidad_Id='"+remito.getLocalidadId()+"'"	;
+	 	    Statement st = conn.createStatement(); 
+	        ResultSet rs = st.executeQuery(sql);
+	        int id=NO_EXISTE_EN_BD;
+		    while(rs.next()){
+		    	id=rs.getInt("Cliente_Id");
+		    }
+		    return id==NO_EXISTE_EN_BD?createCliente(nombreCliente, remito):id;
+    }
+    
+    private long createCliente(String nombreCliente, Remito remito) throws SQLException{
+    	System.out.println("Creando cliente");
+	    String sql = "insert into Clientes (Cliente_Nombre,Cliente_Direccion,Cliente_Localidad_Id) VALUES('"+nombreCliente+"','"+remito.getDireccion()+"','"+remito.getLocalidadId()+"')";
+ 	    Statement st = conn.createStatement(); 
+ 	    int rs = st.executeUpdate(sql);
+        if (rs == 0) {
+            throw new SQLException("Creacion de Cliente Fallida.");
+        }        ResultSet generatedKeys = st.getGeneratedKeys();
+        long idCliente;
+            if (generatedKeys.next()) {
+            	idCliente=generatedKeys.getLong(1);
+            }
+            else {
+                throw new SQLException("Creacion de Cliente Fallida");
+            }
+            return idCliente;
+    }
+    
+    private long createLocalidadBD(String localidad) throws SQLException{
+    	String sql="INSERT INTO Localidad (Localidad_Nombre,Localidad_Tarifa_Id)  VALUES ('"+localidad+"',32);";
+ 	    Statement st = conn.createStatement(); 
+ 	    
+ 	    int rs = st.executeUpdate(sql);
+        if (rs == 0) {
+            throw new SQLException("Creacion de localidad Fallida.");
+        }
+        ResultSet generatedKeys = st.getGeneratedKeys();
+        long idLocalidad;
+            if (generatedKeys.next()) {
+            	idLocalidad=generatedKeys.getLong(1);
+            }
+            else {
+                throw new SQLException("Creacion de localidad Fallida");
+            }
+            return idLocalidad;
+    }
+    
+    private long createOrden(Remito remito) throws SQLException{
+       System.out.println("Creando orden.");
+ 	   DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+ 	   Calendar cal = Calendar.getInstance();
+ 	   String fecha= dateFormat.format(cal.getTime()).toString();
+	   String sql = "insert into Orden (Orden_Dest_Cliente_Id,Orden_Remi_Cliente_Id,Orden_Fecha) VALUES("+remito.getClienteId()+", 482 ,Date())";
+ 	   Statement st = conn.createStatement(); 
+ 	   int rs = st.executeUpdate(sql);
+ 	   return rs;
+    	
+    }
+    
+    private long createRemito(Remito remito) throws SQLException{
+       System.out.println("Creando remito.");
+ 	   String sql = "insert into Remito (Remito_Orden_Id,Remito_RemitoStatus_id) VALUES("+remito.getOrdenId()+", 1)";
+  	   Statement st = conn.createStatement(); 
+  	   int rs = st.executeUpdate(sql);
+  	   return rs; 	
+    }
+    
+    
+    private void escribirErrorRemito(Remito remito,String line) throws IOException{
+    	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,"Error en el registro Nº:"+remito.getNumeroRegistro());
+    	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,"Pagina:"+remito.getPagina());
+    	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,"Fichero: "+remito.getPdf());
+    	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,"Remito: "+remito);
+    	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,"Descripcion: "+line);
+    	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,LogFile.SEPARADOR);
+    }
+    
+    
+    
+    
+    
+    public ArrayList<Remito> lecturaPDF() throws IOException{
+        File dir = new File(Propiedades.getInstance().getPath_pdf());//CREO UN OBJETO CON TODOS LOS ARCHIVOS QUE CONTIENE LA CARPETA QUE CONTIENE LOS PDFS.
         String[] ficheros = dir.list();//ARREGLO QUE ALMACENARÁ TODOS LOS NOMBRES DE LOS ARCHIVOS QUE ESTAN DENTRO DEL OBJETO.
-        
+        ArrayList<Remito> list= new ArrayList<Remito>();
+
         if (ficheros == null)//EXCEPCION
               System.out.println("No hay archivos en la carpeta especificada");
         else { 
-          for (int x=0;x<ficheros.length;x++){//RECORREMOS EL ARREGLO CON LOS NOMBRES DE ARCHIVO
-            String ruta=new String();//VARIABLE QUE DETERMINARA LA RUTA DEL ARCHIVO A LEER.
-            ruta=("H:/Users/GAS/Desktop/pdf/"+ficheros[x]); //SE ALMACENA LA RUTA DEL ARCHIVO A LEER. 
-            
+          for (int x=0;x<ficheros.length;x++){ //RECORREMOS EL ARREGLO CON LOS NOMBRES DE ARCHIVO
+            String ruta=(Propiedades.getInstance().getPath_pdf()+"/"+ficheros[x]); //SE ALMACENA LA RUTA DEL ARCHIVO A LEER. 
+            if((new File(ruta).isDirectory())){ continue;}
               try {
             	  PDDocument pd = PDDocument.load(ruta); //CARGAR EL PDF
                   List l = pd.getDocumentCatalog().getAllPages();//NUMERO LAS PAGINAS DEL ARCHIVO
                   Object[] obj = l.toArray();//METO EN UN OBJETO LA LISTA DE PAGINAS PARA MANIPULARLA
                                     
-                  
-                  ArrayList<Remito> list= new ArrayList<Remito>();
+                  	int lengthAnterior=0;
                   	for(int n=0;n<obj.length;n++){
                   		PDPage page = (PDPage) obj[n];//PAGE ES LA PAGINA 1 DE LA QUE CONSTA EL ARCHIVO
-                        PageFormat pageFormat = pd.getPageFormat(0);//PROPIEDADES DE LA PAGINA (FORMATO)
-                        Double d1 = new Double(pageFormat.getHeight());//ALTO
-                        Double d2 = new Double(pageFormat.getWidth());//ANCHO
-                        int width = d1.intValue();//ANCHO
                         int eigth=1024;//ALTO
                         PDFTextStripperByArea stripper = new PDFTextStripperByArea();//COMPONENTE PARA ACCESO AL TEXTO
                     	  for(int i=100;i<eigth-140;i+=10){
@@ -127,34 +221,32 @@ public class LeerPdf {
 	                        	  r.setDireccion(direcciones);
 	                        	  r.setnEnvio(nEnvios);
 	                        	  r.setBulto(bultos);
+	                        	  r.setPagina(String.valueOf(n+1));
+	                        	  r.setPdf(ficheros[x]);
+	                        	  r.setNumeroRegistro(String.valueOf(list.size()-lengthAnterior+1));
 	                        	  list.add(r);
                               }
                     	  }
-                  	}
-                  		for(Remito r:list)
-                    		  System.out.println(r);
-                  		System.out.println("Total de registros:" +list.size());
 
-                  /*for(int i=1;i<agentesArray.length;i++){ //El primero lo ignoramos porque es el titulo
-                	  Remito r= new Remito();
-                	  r.setAgente(agentesArray[i]);
-                	  r.setCliente(clientesArray[i]);
-                	  r.setLocalidad(localidadesArray[i]);
-                	  r.setDireccion(direccionesArray[i]);
-                	  r.setnEnvio(nEnviosArray[i]);
-                	  r.setBulto(bultosArray[i]);
-                	  System.out.println(r);
-                  }*/
-                                                                       
+                  	}
+              	  int registrosFicheroProcesado= list.size()-lengthAnterior;
+              	  lengthAnterior=list.size();
+                  LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "Se proceso el fichero: "+ficheros[x]);
+                  LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "Se registraron un total de "+registrosFicheroProcesado+ " registros en el fichero");
+                  LogFile.escribirEnLog(LogFile.LOG_EJECUCION, LogFile.SEPARADOR);                                                                     
                   pd.close();//CERRAMOS OBJETO ACROBAT
-              } catch (IOException e) {
+                  
+              } catch (Exception e) {
                   if(e.toString()!=null){
-                    File archivo=new File("dañado_"+ficheros[x]+".txt");//SEPARA LOS DAÑADOS
+                	  LogFile.escribirEnLog(LogFile.LOG_ERROR_LECTURA_PDF, "Error al leer el fichero: "+ficheros[x]);
                   }
                   System.out.println("Archivo dañado "+ficheros[x]);// INDICA EN CONSOLA CUALES SON LOS DAÑADOS
                   e.printStackTrace();
               }//CATCH
-          }//FOR
+          } //FOR
         }//ELSE
+        return list;
     }//LECTURAPDF()
+    
+    
 }//CLASS
