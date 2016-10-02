@@ -59,7 +59,7 @@ public class LeerPdf {
  	    if(remito.getAgente().length()>=1)
  	    	nombreCliente=remito.getAgente();
  	    else if(remito.getCliente().length()>=1)
- 	    	nombreCliente=remito.getAgente();
+ 	    	nombreCliente=remito.getCliente();
  	    else{
  	    	escribirErrorRemito(remito,"No se encuentra nombre de angente ni nombre de cliente");
  	    	return;
@@ -145,7 +145,18 @@ public class LeerPdf {
 	   String sql = "insert into Orden (Orden_Dest_Cliente_Id,Orden_Remi_Cliente_Id,Orden_Fecha) VALUES("+remito.getClienteId()+", 482 ,Date())";
  	   Statement st = conn.createStatement(); 
  	   int rs = st.executeUpdate(sql);
- 	   return rs;
+ 	  if (rs == 0) {
+          throw new SQLException("Creacion de Orden Fallida.");
+      }
+      ResultSet generatedKeys = st.getGeneratedKeys();
+      long idOrden;
+          if (generatedKeys.next()) {
+        	  idOrden=generatedKeys.getLong(1);
+          }
+          else {
+              throw new SQLException("Creacion de Orden Fallida");
+          }
+          return idOrden;
     	
     }
     
@@ -154,7 +165,18 @@ public class LeerPdf {
  	   String sql = "insert into Remito (Remito_Orden_Id,Remito_RemitoStatus_id) VALUES("+remito.getOrdenId()+", 1)";
   	   Statement st = conn.createStatement(); 
   	   int rs = st.executeUpdate(sql);
-  	   return rs; 	
+  	  if (rs == 0) {
+          throw new SQLException("Creacion de Remito Fallida.");
+      }
+      ResultSet generatedKeys = st.getGeneratedKeys();
+      long idRemito;
+          if (generatedKeys.next()) {
+        	  idRemito=generatedKeys.getLong(1);
+          }
+          else {
+              throw new SQLException("Creacion de Remito Fallida");
+          }
+          return idRemito;
     }
     
     
