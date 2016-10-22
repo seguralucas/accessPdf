@@ -1,17 +1,8 @@
 package test;
 
 import java.awt.Rectangle;
-import java.awt.print.PageFormat;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -26,13 +17,16 @@ import java.util.Properties;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.util.PDFImageWriter;
 import org.apache.pdfbox.util.PDFTextStripperByArea;
 public class LeerPdf {
 	public static int aciertos=0;
 	public static int fallos=0;
 	public static final int NO_EXISTE_EN_BD=-1;
     public static void main(String[] args) throws IOException {
+    	/********************************************/
+   		long time_start, time_end;
+    	time_start = System.currentTimeMillis();
+    	/********************************************/
         LeerPdf leerPDF =new LeerPdf();
         Properties props=null;
             try{
@@ -41,13 +35,28 @@ public class LeerPdf {
    			LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "Total de registros:" +remitos.size());
    			for(Remito remito: remitos){
    				leerPDF.insertarRemito(remito);
+   				System.out.println("Remitos insertados: "+(aciertos+fallos));
    			}
+   			LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "Aciertos "+aciertos+", Fallos "+fallos);
+   			LogFile.escribirEnLog(LogFile.LOG_EJECUCION, LogFile.SEPARADOR);
+
+   			System.out.println("Total de registros:" +remitos.size());
    			System.out.println("Aciertos "+aciertos+" Fallos "+fallos);
+   			
+        	/********************************************/
+	    	time_end = System.currentTimeMillis();
+	    	double tiempoDemorado=(time_end - time_start)/1000/60 ;
+	    	System.out.println("El proceso de insecion demoro un total de: "+tiempoDemorado+" minutos");
+	    	LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "El proceso de insecion demoro  un total de: "+tiempoDemorado+" minutos");
+        	/********************************************/
+   			
    			LogFile.cerrarYGuardarLogs();
+   			
             }
             catch(Exception e){
        			LogFile.cerrarYGuardarLogs();
             }
+
     }
     
     private static Connection conn;
@@ -68,7 +77,7 @@ public class LeerPdf {
  	    	remito.setClienteId(getCliente(nombreCliente,remito));
  	    	remito.setOrdenId(createOrden(remito));
  	    	createRemito(remito);
- 	    
+ 	    	aciertos++;
         }
         catch (Exception e) {
         	escribirErrorRemito(remito, "Error al insertar en el access: "+e.getMessage());
@@ -76,7 +85,7 @@ public class LeerPdf {
         }
     }
     
-    private long getIdLocalidadBD(String localidad) throws SQLException{
+    private long getIdLocalidadBD(String localidad) throws SQLException, IOException{
     	String sql = "Select * from Localidad where Localidad_Nombre='"+localidad+"'"; 
  	    Statement st = conn.createStatement(); 
 	       ResultSet rs = st.executeQuery(sql);
@@ -89,7 +98,7 @@ public class LeerPdf {
     
 
     
-    private long getCliente(String nombreCliente, Remito remito) throws SQLException{
+    private long getCliente(String nombreCliente, Remito remito) throws SQLException, IOException{
     	String sql = "Select * from Clientes where Cliente_Nombre='"+nombreCliente+"' and Cliente_Direccion='"+remito.getDireccion()+"' and Cliente_Localidad_Id='"+remito.getLocalidadId()+"'"	;
 	 	    Statement st = conn.createStatement(); 
 	        ResultSet rs = st.executeQuery(sql);
@@ -100,8 +109,7 @@ public class LeerPdf {
 		    return id==NO_EXISTE_EN_BD?createCliente(nombreCliente, remito):id;
     }
     
-    private long createCliente(String nombreCliente, Remito remito) throws SQLException{
-    	System.out.println("Creando cliente");
+    private long createCliente(String nombreCliente, Remito remito) throws SQLException, IOException{
 	    String sql = "insert into Clientes (Cliente_Nombre,Cliente_Direccion,Cliente_Localidad_Id) VALUES('"+nombreCliente+"','"+remito.getDireccion()+"','"+remito.getLocalidadId()+"')";
  	    Statement st = conn.createStatement(); 
  	    int rs = st.executeUpdate(sql);
@@ -115,10 +123,13 @@ public class LeerPdf {
             else {
                 throw new SQLException("Creacion de Cliente Fallida");
             }
+   		    LogFile.escribirEnLog(LogFile.LOG_CLIENTES_CREADOS, "Nombre: "+nombreCliente+" Direccion: "+remito.getDireccion()+" Localidad: "+remito.getLocalidad());
+
+
             return idCliente;
     }
     
-    private long createLocalidadBD(String localidad) throws SQLException{
+    private long createLocalidadBD(String localidad) throws SQLException, IOException{
     	String sql="INSERT INTO Localidad (Localidad_Nombre,Localidad_Tarifa_Id)  VALUES ('"+localidad+"',32);";
  	    Statement st = conn.createStatement(); 
  	    
@@ -134,11 +145,11 @@ public class LeerPdf {
             else {
                 throw new SQLException("Creacion de localidad Fallida");
             }
+   			LogFile.escribirEnLog(LogFile.LOG_LOCALIDADES_CREADAS, "Localidad creada. Nombre: "+localidad+" Id: "+idLocalidad);
             return idLocalidad;
     }
     
-    private long createOrden(Remito remito) throws SQLException{
-       System.out.println("Creando orden.");
+    private long createOrden(Remito remito) throws SQLException, IOException{
  	   DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
  	   Calendar cal = Calendar.getInstance();
  	   String fecha= dateFormat.format(cal.getTime()).toString();
@@ -156,12 +167,12 @@ public class LeerPdf {
           else {
               throw new SQLException("Creacion de Orden Fallida");
           }
+ 		  LogFile.escribirEnLog(LogFile.LOG_ORDENES_CREADAS, "Orden creada para cliente destino: "+(remito.getCliente().length()==0?remito.getAgente():remito.getCliente())+" con Id: "+remito.getClienteId());
           return idOrden;
     	
     }
     
     private long createRemito(Remito remito) throws SQLException{
-       System.out.println("Creando remito.");
  	   String sql = "insert into Remito (Remito_Orden_Id,Remito_RemitoStatus_id) VALUES("+remito.getOrdenId()+", 1)";
   	   Statement st = conn.createStatement(); 
   	   int rs = st.executeUpdate(sql);
@@ -176,6 +187,7 @@ public class LeerPdf {
           else {
               throw new SQLException("Creacion de Remito Fallida");
           }
+          
           return idRemito;
     }
     
@@ -187,6 +199,7 @@ public class LeerPdf {
     	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,"Remito: "+remito);
     	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,"Descripcion: "+line);
     	LogFile.escribirEnLog(LogFile.LOG_ERROR_INSERCION_REMITO,LogFile.SEPARADOR);
+    	fallos++;
     }
     
     
@@ -201,6 +214,7 @@ public class LeerPdf {
         if (ficheros == null)//EXCEPCION
               System.out.println("No hay archivos en la carpeta especificada");
         else { 
+          	int lengthAnterior=0;
           for (int x=0;x<ficheros.length;x++){ //RECORREMOS EL ARREGLO CON LOS NOMBRES DE ARCHIVO
             String ruta=(Propiedades.getInstance().getPath_pdf()+"/"+ficheros[x]); //SE ALMACENA LA RUTA DEL ARCHIVO A LEER. 
             if((new File(ruta).isDirectory())){ continue;}
@@ -209,7 +223,6 @@ public class LeerPdf {
                   List l = pd.getDocumentCatalog().getAllPages();//NUMERO LAS PAGINAS DEL ARCHIVO
                   Object[] obj = l.toArray();//METO EN UN OBJETO LA LISTA DE PAGINAS PARA MANIPULARLA
                                     
-                  	int lengthAnterior=0;
                   	for(int n=0;n<obj.length;n++){
                   		PDPage page = (PDPage) obj[n];//PAGE ES LA PAGINA 1 DE LA QUE CONSTA EL ARCHIVO
                         int eigth=1024;//ALTO
@@ -252,10 +265,11 @@ public class LeerPdf {
 
                   	}
               	  int registrosFicheroProcesado= list.size()-lengthAnterior;
-              	  lengthAnterior=list.size();
                   LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "Se proceso el fichero: "+ficheros[x]);
                   LogFile.escribirEnLog(LogFile.LOG_EJECUCION, "Se registraron un total de "+registrosFicheroProcesado+ " registros en el fichero");
-                  LogFile.escribirEnLog(LogFile.LOG_EJECUCION, LogFile.SEPARADOR);                                                                     
+                  LogFile.escribirEnLog(LogFile.LOG_EJECUCION, LogFile.SEPARADOR);    
+              	  lengthAnterior=list.size();
+                                                                 
                   pd.close();//CERRAMOS OBJETO ACROBAT
                   
               } catch (Exception e) {

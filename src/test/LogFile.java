@@ -9,6 +9,10 @@ public class LogFile {
 	private FileWriter fw;
 	private HashMap<String, FileWriter> mapLog;
 	public static final String LOG_EJECUCION="log_ejecucion.txt";
+	public static final String LOG_LOCALIDADES_CREADAS="log_localidades_creadas.txt";
+	public static final String LOG_CLIENTES_CREADOS="log_clientes_creados.txt";
+	public static final String LOG_ORDENES_CREADAS="log_ordenes_creadas.txt";
+	public static final String LOG_REMITOS_CREADAS="log_remitos_creados.txt";
 	public static final String LOG_ERROR_LECTURA_PDF="error_leer_pdf.txt";
 	public static final String LOG_ERROR_INSERCION_REMITO="Error_insercion_remito.txt";
 	public static final String SEPARADOR="************************************";
